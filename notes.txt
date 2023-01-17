@@ -1,0 +1,10 @@
+First timestamp: 1640167200
++1 year: 1671703200
+Delta: 31536000
+
+One day = 86400
+
+Today's time: (current time) % 86400
+
+Point in data = 1640167200 + 31536000 * (today's time)/86400
+

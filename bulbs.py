@@ -5,14 +5,6 @@ import asyncio
 class Bulbs:
     def __init__(self):
         self.bulbs = []
-        self.colors = self.build_colors()
-        
-    def build_colors(self):
-        colors = {}
-        colors[0] = [235, 100, 100] #blue
-        colors[1] = [349, 100, 100] #red
-        colors[2] = [144, 100, 50] #green
-        return colors
 
     async def get_bulbs(self):
         while True:
@@ -26,8 +18,7 @@ class Bulbs:
             else:
                 return
             
-    async def update_bulb(self, bulb, color_id):
-        c = self.colors[color_id.value]
+    async def update_bulb(self, bulb):
         await bulb.update()
         await bulb.set_hsv(c[0], c[1], c[2])
         await bulb.update()

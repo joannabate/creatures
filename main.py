@@ -47,6 +47,7 @@ DATA_INTERVAL = 900
 #                 if i == 2:
 #                     break
 
+
 class Data:
     def __init__(self):
         self.df = pd.read_csv('power_data.csv', index_col=0)
