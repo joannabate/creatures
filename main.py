@@ -78,16 +78,16 @@ class Data:
         # Apply a rolling window and average. Data is reversed to get a forward looking average.
         df.loc[:, df.columns!='Timestamp'] = df.loc[:, df.columns!='Timestamp'][::-1].rolling(60, min_periods=1).mean()[::-1]
 
-        # Normalize entire dataset between 1.5 and 0
-        df.loc[:, df.columns!='Timestamp'] = df.loc[:, df.columns!='Timestamp'].apply(lambda x: 1.5 * (x - x.min())/(x.max() - x.min()))
-
-        #Add some noise
-        df['angle'] = 4 * (df.index % 90) * np.pi / 180
-        df['Direct Beam'] = df['Direct Beam'] + df['angle'].apply(lambda x: (np.sin(x)+1)/5)
-
         # Normalize entire dataset between 1.5 and 0, then clip to 1
         df.loc[:, df.columns!='Timestamp'] = df.loc[:, df.columns!='Timestamp'].apply(lambda x: 1.5 * (x - x.min())/(x.max() - x.min())).clip(upper=1)
 
+        #Add new column with brightness, created from sine waves randomly varying in frequency
+        s = pd.Series(dtype='float')
+
+        while len(s) < len(df):
+            s = pd.concat([s, np.sin(pd.Series(range(0, 360, random.randint(5, 10))) * np.pi / 180)])
+
+        df = df.merge(s.rename('Brightness', inplace=True).reset_index(), how='left', left_index=True, right_index=True)
 
         return df
 
@@ -99,8 +99,8 @@ class Data:
         x_scale = red[0] - green[0]
         y_scale = red[1] - green[1]
 
-        x = green[0] + (num * x_scale)
-        y = green[1] + (num * y_scale)
+        x = green[0] + ((1-num) * x_scale)
+        y = green[1] + ((1-num) * y_scale)
 
         return {'x':x, 'y':y}
 
@@ -121,8 +121,7 @@ class Data:
 
         # Setup time counters
         real_start_time = time()
-        prev_color = -1
-
+        
         # Filter to correct point in data based on time of day
         df = self.df[self.df['Timestamp']>np.datetime64(self.get_data_start_time())]
 
@@ -143,22 +142,23 @@ class Data:
                 self.outport.send(msg)
 
                 color = self.convert_to_color(row['Direct Beam'])
+                brightness = int(126 * row['Brightness'] + 128)
 
-                if color != prev_color:
-                    for n in range(2):
-                        try:
-                            bulb_name = 'Bulb ' + str(n+1)
-                            get_plugin('zigbee.mqtt').device_set(device=bulb_name, property='color', value=color)
-                            print('Setting %f to %f', bulb_name, color)
-                            #sleep(0.2)
+                for n in range(2):
+                    try:
+                        bulb_name = 'Bulb ' + str(n+1)
+                        get_plugin('zigbee.mqtt').device_set(device=bulb_name, property='color', value=color)
+                        get_plugin('zigbee.mqtt').device_set(device=bulb_name, property='brightness', value=brightness)
+                        print(f'Setting {bulb_name} to color {color}, brightness {brightness}')
 
-                        except:
-                            continue
+                        #sleep(0.2)
 
-                prev_color = color
+                    except:
+                        continue
 
                 # Sleep until the next beat
                 sleep((TEMPO - ((time() - real_start_time) % TEMPO))/(15 * 1000000.0))
+                print(f'sleeping {((TEMPO - ((time() - real_start_time) % TEMPO))/(15 * 1000000.0))}')
             
             # Next time round use full dataset
             df = self.df
