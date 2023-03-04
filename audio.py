@@ -1,52 +1,30 @@
-import os
-import glob
-from scipy.io import wavfile
-import sounddevice as sd
+from midi import MidiController
 
 class Audio:
-    def __init__(self):
-        self.samples = []
-        
-        self.samples.append({'folder': 'Synth Loops',
-                        'subfolder': 'Drop Loops',
-                        'key': True,
-                        'bpm': True})
+    def __init__(self, df):
+        self.controller = MidiController()
+        self.df = df
 
-        self.samples.append({'folder': 'Synth Loops',
-                        'subfolder': 'Breakdown Loops',
-                        'key': True,
-                        'bpm': True})
+    def run(self, i):
+        i_last = -1
+        last_ambient_vol = -1
 
-        for i, meta in enumerate(self.samples):
-            path = 'samples/' + meta['folder'] + '/' + meta['subfolder']
-            files = os.listdir(path)
+        while True:
+            if i.value != i_last: # timestep has changed
+                row = self.df.iloc[i.value]
 
-            sample_list = []
+                ambient_vol = int(row['Direct Beam'] * 127)
 
-            for filename in glob.glob(os.path.join(path, '*.wav')):
-                samplerate, data = wavfile.read(filename)
+                if ambient_vol != last_ambient_vol:
+                    self.controller.set_control(control=0, value=ambient_vol)
+                    self.controller.set_control(control=1, value=ambient_vol)
+                    print("setting ambient volume to " + str(ambient_vol))
 
-                samplename = filename.split('.')[0]
-                samplename_parts = []
-                samplename_parts = samplename.split(' ')
-                key = samplename_parts[-2] + samplename_parts[-1]
-                bpm = samplename_parts[-4]
+                    self.controller.set_control(control=2, value=(127-ambient_vol))
+                    self.controller.set_control(control=3, value=(127-ambient_vol))
+                    print("setting music volume to " + str(127-ambient_vol))
 
-                if meta['key'] and meta['bpm']:
-                
-                    sample_list.append({'name': samplename,
-                        'rate': samplerate,
-                        'key': key,
-                        'bpm': bpm,
-                        'data': data})
+                timestep = i.value % 1440
 
-            self.samples[i]['samples'] = sample_list
-
-if __name__ == '__main__':
-    audio = Audio()
-    for meta in audio.samples:
-        for sample in meta['samples']:
-            sd.play(sample['data'], blocking=True)
-
-
-
+                i_last = i.value
+                last_ambient_vol = ambient_vol

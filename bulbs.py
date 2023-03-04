@@ -1,32 +1,49 @@
-import time
-from kasa import Discover, SmartBulb
-import asyncio
+from platypush.context import get_plugin
+
 
 class Bulbs:
-    def __init__(self):
-        self.bulbs = []
+    def __init__(self, df):
+        self.df = df
+        self.bulb_names = ['Bulb ' + str(n+1) for n in range(6)]
 
-    async def get_bulbs(self):
-        while True:
-            devices = await Discover.discover()
+    def convert_to_color(self, num):
+        red = 0.7539, 0.2746
+        green = 0.0771, 0.8268
 
-            for addr, dev in devices.items():
-                self.bulbs.append(SmartBulb(addr))
-                print(f"{addr} >> {dev}")
-            if len(self.bulbs) == 0:
-                print('No bulbs discovered, retrying...')
-            else:
-                return
+        x_scale = red[0] - green[0]
+        y_scale = red[1] - green[1]
+
+        x = green[0] + (num * x_scale)
+        y = green[1] + (num * y_scale)
+
+        return {'x':x, 'y':y}
             
-    async def update_bulb(self, bulb):
-        await bulb.update()
-        await bulb.set_hsv(c[0], c[1], c[2])
-        await bulb.update()
+    def update_bulbs(self, property, value):
+        for bulb_name in self.bulb_names:
+            get_plugin('zigbee.mqtt').device_set(device=bulb_name, property=property, value=value)
         
-    async def run(self, color_id):
-        c_id = -1
+    def run(self, i):
+        i_last = -1
+        last_color = -1
+        last_brightness = -1
+
         while True:
-            if color_id.value != c_id: # emotion has changed
-                await asyncio.gather(*(self.update_bulb(bulb, color_id) for bulb in self.bulbs))
-                c_id = color_id.value 
-            time.sleep(0.1)
+            if i.value != i_last: # timestep has changed
+
+                row = self.df.iloc[i.value]
+                color = self.convert_to_color(row['Direct Beam'])
+                brightness = int(126 * row['Brightness'] + 128)
+
+                print('color ' + str(color))
+                print('brightness ' + str(brightness))
+
+                if color != last_color:
+                    print('setting color to ' + str(color))
+                    self.update_bulbs('color', color)
+                if brightness != last_brightness:
+                    print('setting brightness to ' + str(brightness))
+                    self.update_bulbs('brightness', brightness)
+
+                i_last = i.value
+                last_color = color
+                last_brightness = brightness
