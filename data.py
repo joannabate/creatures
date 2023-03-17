@@ -7,13 +7,13 @@ import random
 
 def load_data(cached=False):
     if cached:
-        return pickle.load( open( "data.pickle", "rb" ) )
+        return pickle.load(open( "data.pickle", "rb") )
     else:
         df = pd.read_csv('irradiance.csv')
 
-        df_mins = pd.DataFrame(data={'mins': range(0, 60, 5)})
+        # Expand from hourly to minute
+        df_mins = pd.DataFrame(data={'mins': range(0, 60)})
 
-        # Cross-join data to expand from hourly to 5 min
         df['key'] = 0
         df_mins['key'] = 0
 
@@ -24,7 +24,7 @@ def load_data(cached=False):
         df.drop(columns=['key', 'mins'], inplace=True)
 
         # Apply a rolling window and average. Data is reversed to get a forward looking average.
-        df.loc[:, df.columns!='Timestamp'] = df.loc[:, df.columns!='Timestamp'][::-1].rolling(12, min_periods=1).mean()[::-1]
+        df.loc[:, df.columns!='Timestamp'] = df.loc[:, df.columns!='Timestamp'][::-1].rolling(60, min_periods=1).mean()[::-1]
 
         # Normalize entire dataset between 1.25 and 0, then clip to 1
         df.loc[:, df.columns!='Timestamp'] = df.loc[:, df.columns!='Timestamp'].apply(lambda x: 1.25 * (x - x.min())/(x.max() - x.min())).clip(upper=1)
