@@ -8,7 +8,7 @@ class MidiController:
     def play_note(self, channel=0, note=60, velocity=64):
         msg = mido.Message('note_on', channel=channel, note=note, velocity=velocity)
         self.outport.send(msg)
-        time.sleep(1)
+
         msg = mido.Message('note_off', channel=channel, note=note, velocity=velocity)
         self.outport.send(msg)
 
@@ -28,12 +28,17 @@ if __name__ == "__main__":
     my_controller = MidiController()
     #my_controller.test_control(control=5)
     # my_controller.set_control(channel=1, control=10, value=1)
-    my_controller.play_note(channel=0, note=78)
+    my_controller.play_note(channel=1, note=118)
 
-
+### CHANNEL 0 ###
 # control 0 = ambient 1 volume
 # control 1 = ambient 2 volume
 # control 2 = music 1 volume
 # control 3 = music 2 volume
-# control 4 = music 3 volume
-# control 5 = music 4 volume
+# notes 0 thru 20 = ambient samples
+# note 100 = start
+# note 101 = stop
+
+### CHANNEL 1 ###
+# notes 0 thru 40 = drum samples
+# notes 40 through 120 = melody samples

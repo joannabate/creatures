@@ -24,9 +24,7 @@ class Listener:
         for msg in self.inport:
             if msg.type == 'clock':
                 if ticks % 6 == 0:
-                    print('quarter beat')
                     i.value = i.value + 1
-                    # print(i.value)
                 ticks = ticks + 1
 
 
