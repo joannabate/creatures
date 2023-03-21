@@ -9,10 +9,7 @@ from video import Video
 MIDDLE_C = 60
 
 class Listener:
-    def __init__(self, df):
-        self.df = df
-        # Setup audio
-        # self.outport = mido.open_output('IAC Driver creatures')
+    def __init__(self):
         self.inport = mido.open_input()
 
     def run(self, i):
@@ -28,22 +25,23 @@ class Listener:
                 ticks = ticks + 1
 
 
-def listener(i, df):
-    my_listener = Listener(df)
+def listener(i):
+    my_listener = Listener()
     my_listener.run(i)
 
 def devices_loop(i, df):
     my_devices = Devices(df)
     my_devices.run(i)
 
-def audio_loop(i, df):
+def audio_loop(i, df, element):
     my_audio = Audio(df)
-    my_audio.run(i)
+    my_audio.run(i, element)
 
-def video_loop(i, df):
+def video_loop(i, df, element):
     my_video = Video(df)
-    my_video.run(i)
-        
+    my_video.run(i, element)
+
+
 if __name__ == "__main__":
     
     mp.set_start_method('forkserver')
@@ -51,11 +49,12 @@ if __name__ == "__main__":
     df = load_data(cached=True)
 
     i = mp.Value('i', get_start_index(df))
+    element = mp.Value('i', 0)
     
-    p1 = mp.Process(target=listener, args=(i, df))
+    p1 = mp.Process(target=listener, args=(i,))
     p2 = mp.Process(target=devices_loop, args=(i, df))
-    p3 = mp.Process(target=audio_loop, args=(i, df))
-    p4 = mp.Process(target=video_loop, args=(i, df))
+    p3 = mp.Process(target=audio_loop, args=(i, df, element))
+    p4 = mp.Process(target=video_loop, args=(i, df, element))
 
     p1.start()
     p2.start()

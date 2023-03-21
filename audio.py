@@ -10,7 +10,6 @@ class Audio:
 
         #Populate samples
         self.df_samples = self.generate_samples()
-        self.ambient_sample = randint(0, 3)
 
     def generate_samples(self):
         # Create array to hold data
@@ -74,14 +73,14 @@ class Audio:
         # Convert to int and return
         return df_samples.astype('int')
 
-    def run(self, i):
+    def run(self, i, element):
         # start playback
         self.controller.play_note(channel=0, note=100)
 
         i_last = -1
         ambient_vol_last = -1
         df_samples_last = self.df_samples.head(1).copy()
-        ambient_sample_last = -1
+        element_last = -1
 
         for col in df_samples_last.columns:
             df_samples_last[col].values[:] = 0
@@ -92,10 +91,10 @@ class Audio:
 
                 ambient_vol = int(row['Direct Beam'] * 127)
 
-                if self.ambient_sample != ambient_sample_last:
+                if element.value != element_last:
                     for sample_bank in range(0, 20, 10):
-                        self.controller.play_note(channel=0, note=sample_bank+self.ambient_sample)
-                        ambient_sample_last = self.ambient_sample
+                        self.controller.play_note(channel=0, note=sample_bank+element.value)
+                        element_last = element.value
 
                 if ambient_vol != ambient_vol_last:
                     for cc in range(2):
@@ -126,7 +125,7 @@ class Audio:
 
                 # If we're just before midnight, pick new ambient sample
                 if day_idx == (24*60 - 4 - 4):
-                    self.ambient_sample = randint(0, 3)
+                    element.value = randint(0, 3)
 
                 i_last = i.value
                 ambient_vol_last = ambient_vol
