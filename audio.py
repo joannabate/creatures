@@ -2,6 +2,7 @@ from midi import MidiController
 import numpy as np
 import pandas as pd
 from random import randrange, randint, choice
+from time import time
 
 class Audio:
     def __init__(self, df):
@@ -73,28 +74,39 @@ class Audio:
         # Convert to int and return
         return df_samples.astype('int')
 
-    def run(self, i):
+    def run(self, i, step_on_flag):
         # start playback
         self.controller.play_note(channel=0, note=100)
 
         i_last = -1
         ambient_vol_last = -1
         df_samples_last = self.df_samples.head(1).copy()
-        # element_last = -1
+        element_last = -1
+        element = choice(range(0,4))
+        step_time_last = time()
 
         for col in df_samples_last.columns:
             df_samples_last[col].values[:] = 0
 
         while True:
+
+            # If step is on and it's been more than three seconds since we last did this,
+            # regenerate samples and ambient sounds
+            if step_on_flag.value:
+                if (time() - step_time_last) > 3:
+                    step_time_last = time()
+                    self.df_samples = self.generate_samples()
+                    element = choice([i for i in range(0,4) if i != element])
+
             if i.value != i_last: # timestep has changed
                 row = self.df.iloc[i.value]
 
                 ambient_vol = int(row['Direct Beam'] * 127)
 
-                # if element.value != element_last:
-                #     for sample_bank in range(0, 20, 10):
-                #         self.controller.play_note(channel=0, note=sample_bank+element.value)
-                #         element_last = element.value
+                if element != element_last:
+                    for sample_bank in range(0, 20, 10):
+                        self.controller.play_note(channel=0, note=sample_bank+element)
+                        element_last = element
 
                 if ambient_vol != ambient_vol_last:
                     for cc in range(2):
@@ -124,8 +136,8 @@ class Audio:
                     self.df_samples = self.generate_samples()
 
                 # If we're just before midnight, pick new ambient sample
-                # if day_idx == (24*60 - 4 - 4):
-                    # element.value = choice([i for i in range(0,4) if i != element.value])
+                if day_idx == (24*60 - 4 - 4):
+                    element = choice([i for i in range(0,4) if i != element])
 
                 i_last = i.value
                 ambient_vol_last = ambient_vol

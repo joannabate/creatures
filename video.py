@@ -106,7 +106,7 @@ class Video:
             # print(day_segment)
             return day_segment
 
-    def run(self, i, bpm):
+    def run(self, i, bpm, step_on_flag):
 
         i_last = -1
         day_segment_last = None
@@ -114,6 +114,8 @@ class Video:
         season, bottom_text = self.get_season(i.value)
         frame_time_last = time()
         start_time = time()
+        step_time_last = time()
+        video = None
 
         ft = cv2.freetype.createFreeType2()
         ft.loadFontData(fontFileName='Fondamento-Regular.ttf', id=0)
@@ -122,17 +124,18 @@ class Video:
             print('loading video')
 
             if day_segment == 'night':
-                cap = cv2.VideoCapture('videos/night/' + choice(self.videos['videos/night']))
+                video = choice([x for x in self.videos['videos/night'] if x != video])
+                cap = cv2.VideoCapture('videos/night/' + video)
             elif day_segment == 'midday':
-                cap = cv2.VideoCapture('videos/midday/' + season + '/' + choice(self.videos['videos/midday/' + season]))
+                video = choice([x for x in self.videos['videos/midday/' + season] if x != video])
+                cap = cv2.VideoCapture('videos/midday/' + season + '/' + video)
             else:
-                cap = cv2.VideoCapture('videos/' + day_segment + '/' + choice(self.videos['videos/' + day_segment]))
+                video = choice([x for x in self.videos['videos/' + day_segment] if x != video])
+                cap = cv2.VideoCapture('videos/' + day_segment + '/' + video)
 
             fps = int(cap.get(cv2.CAP_PROP_FPS))
 
             adjusted_fps = fps * bpm.value/100
-
-            frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
 
             n = 0
             skip_frames = 1
@@ -143,6 +146,12 @@ class Video:
                 ret = cap.grab()
 
                 if ret == True:
+
+                    # If step is on and it's been more than three seconds since we last broke, break and start over
+                    if step_on_flag.value:
+                        if (time() - step_time_last) > 3:
+                            step_time_last = time()
+                            break
 
                     n = n + 1
                     if n % skip_frames == 0:
@@ -184,7 +193,6 @@ class Video:
                                     self.sunrise = day_idx
                                 elif day_segment == 'night' and day_segment_last == 'sunset':
                                     self.sunset = day_idx
-
                                 break
 
                             # If music has changed break and start over

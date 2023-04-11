@@ -1,10 +1,11 @@
-from time import time, sleep
+from time import time
 import mido
 import multiprocessing as mp
 from devices import Devices
 from data import load_data, get_start_index
 from audio import Audio
 from video import Video
+from sensor import Sensor
 
 class Listener:
     def __init__(self):
@@ -37,14 +38,17 @@ def devices_loop(i, df):
     my_devices = Devices(df)
     my_devices.run(i)
 
-def audio_loop(i, df):
+def audio_loop(i, step_on_flag, df):
     my_audio = Audio(df)
-    my_audio.run(i)
+    my_audio.run(i, step_on_flag)
 
-def video_loop(i, bpm, df):
+def video_loop(i, bpm, step_on_flag, df):
     my_video = Video(df)
-    my_video.run(i, bpm)
+    my_video.run(i, bpm, step_on_flag)
 
+def sensor_loop(step_on_flag):
+    my_sensor = Sensor()
+    my_sensor.run(step_on_flag)
 
 if __name__ == "__main__":
     
@@ -54,19 +58,22 @@ if __name__ == "__main__":
 
     i = mp.Value('i', get_start_index(df))
     bpm = mp.Value('i', 0)
-
+    step_on_flag = mp.Value('b', False)
     
     p1 = mp.Process(target=listener, args=(i, bpm))
     p2 = mp.Process(target=devices_loop, args=(i, df))
-    p3 = mp.Process(target=audio_loop, args=(i, df))
-    p4 = mp.Process(target=video_loop, args=(i, bpm, df))
+    p3 = mp.Process(target=audio_loop, args=(i, step_on_flag, df))
+    p4 = mp.Process(target=video_loop, args=(i, bpm, step_on_flag, df))
+    p5 = mp.Process(target=sensor_loop, args=(step_on_flag,))
 
     p1.start()
     p2.start()
     p3.start()
     p4.start()
+    p5.start()
 
     p1.join()
     p2.join()
     p3.join()
     p4.join()
+    p5.join()
