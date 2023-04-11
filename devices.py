@@ -41,10 +41,10 @@ class Devices:
                 plug_state = 'ON' if row['Direct Beam'] < 0.25 else 'OFF'
 
                 if color != last_color:
-                    print('setting color to ' + str(color))
+                    # print('setting color to ' + str(color))
                     self.update_bulbs('color', color)
                 if brightness != last_brightness:
-                    print('setting brightness to ' + str(brightness))
+                    # print('setting brightness to ' + str(brightness))
                     self.update_bulbs('brightness', brightness)
                 if plug_state != last_plug_state:
                     print('setting plug state to ' + plug_state)

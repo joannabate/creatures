@@ -1,7 +1,7 @@
 from midi import MidiController
 import numpy as np
 import pandas as pd
-from random import randrange, randint
+from random import randrange, randint, choice
 
 class Audio:
     def __init__(self, df):
@@ -73,14 +73,14 @@ class Audio:
         # Convert to int and return
         return df_samples.astype('int')
 
-    def run(self, i, element):
+    def run(self, i):
         # start playback
         self.controller.play_note(channel=0, note=100)
 
         i_last = -1
         ambient_vol_last = -1
         df_samples_last = self.df_samples.head(1).copy()
-        element_last = -1
+        # element_last = -1
 
         for col in df_samples_last.columns:
             df_samples_last[col].values[:] = 0
@@ -91,19 +91,19 @@ class Audio:
 
                 ambient_vol = int(row['Direct Beam'] * 127)
 
-                if element.value != element_last:
-                    for sample_bank in range(0, 20, 10):
-                        self.controller.play_note(channel=0, note=sample_bank+element.value)
-                        element_last = element.value
+                # if element.value != element_last:
+                #     for sample_bank in range(0, 20, 10):
+                #         self.controller.play_note(channel=0, note=sample_bank+element.value)
+                #         element_last = element.value
 
                 if ambient_vol != ambient_vol_last:
                     for cc in range(2):
                         self.controller.set_control(control=cc, value=ambient_vol)
-                    print("setting ambient volume to " + str(ambient_vol))
+                    # print("setting ambient volume to " + str(ambient_vol))
 
                     for cc in range(2, 4):
                         self.controller.set_control(control=cc, value=(127-ambient_vol))
-                    print("setting music volume to " + str(127-ambient_vol))
+                    # print("setting music volume to " + str(127-ambient_vol))
 
                 # Get index for hour of day
                 day_idx = i.value % 1440
@@ -124,8 +124,8 @@ class Audio:
                     self.df_samples = self.generate_samples()
 
                 # If we're just before midnight, pick new ambient sample
-                if day_idx == (24*60 - 4 - 4):
-                    element.value = randint(0, 3)
+                # if day_idx == (24*60 - 4 - 4):
+                    # element.value = choice([i for i in range(0,4) if i != element.value])
 
                 i_last = i.value
                 ambient_vol_last = ambient_vol
