@@ -5,7 +5,7 @@ from devices import Devices
 from data import load_data, get_start_index
 from audio import Audio
 from video import Video
-from sensor import Sensor
+from sensors import Sensors
 
 class Listener:
     def __init__(self):
@@ -34,21 +34,21 @@ def listener(i, bpm):
     my_listener = Listener()
     my_listener.run(i, bpm)
 
-def devices_loop(i, df):
+def devices_loop(i, df, sensor_flags):
     my_devices = Devices(df)
-    my_devices.run(i)
+    my_devices.run(i, sensor_flags)
 
-def audio_loop(i, step_on_flag, df):
+def audio_loop(i, df, sensor_flags):
     my_audio = Audio(df)
-    my_audio.run(i, step_on_flag)
+    my_audio.run(i, sensor_flags)
 
-def video_loop(i, bpm, step_on_flag, df):
+def video_loop(i, bpm, df):
     my_video = Video(df)
-    my_video.run(i, bpm, step_on_flag)
+    my_video.run(i, bpm)
 
-def sensor_loop(step_on_flag):
-    my_sensor = Sensor()
-    my_sensor.run(step_on_flag)
+def sensors_loop(sensor_flags):
+    my_sensors = Sensors()
+    my_sensors.run(sensor_flags)
 
 if __name__ == "__main__":
     
@@ -58,13 +58,19 @@ if __name__ == "__main__":
 
     i = mp.Value('i', get_start_index(df))
     bpm = mp.Value('i', 0)
-    step_on_flag = mp.Value('b', False)
+    s1 = mp.Value('b', False)
+    s2 = mp.Value('b', False)
+    s3 = mp.Value('b', False)
+    s4 = mp.Value('b', False)
+
+    sensor_flags = [s1, s2, s3, s4]
+    # sensor_flags = None
     
     p1 = mp.Process(target=listener, args=(i, bpm))
-    p2 = mp.Process(target=devices_loop, args=(i, df))
-    p3 = mp.Process(target=audio_loop, args=(i, step_on_flag, df))
-    p4 = mp.Process(target=video_loop, args=(i, bpm, step_on_flag, df))
-    p5 = mp.Process(target=sensor_loop, args=(step_on_flag,))
+    p2 = mp.Process(target=devices_loop, args=(i, df, sensor_flags))
+    p3 = mp.Process(target=audio_loop, args=(i, df, sensor_flags))
+    p4 = mp.Process(target=video_loop, args=(i, bpm, df))
+    p5 = mp.Process(target=sensors_loop, args=(sensor_flags,))
 
     p1.start()
     p2.start()

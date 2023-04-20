@@ -5,8 +5,9 @@ from data import load_data, get_start_index
 import multiprocessing as mp
 from time import sleep, time
 from random import randint, choice
-from datetime import datetime
 import os
+from skimage.transform import swirl
+
 
 class Video:
     def __init__(self, df, width=1360, height=768, window_name='clock'):
@@ -105,8 +106,40 @@ class Video:
 
             # print(day_segment)
             return day_segment
+    
+    def warp_image(self, frame, n, num_frames):
+        # get dimensions
+        h, w = frame.shape[:2]
 
-    def run(self, i, bpm, step_on_flag):
+        # set wavelength
+        wave_x = 2*w
+        wave_y = h
+
+        # set amount, number of frames and delay
+        amount_x = 10
+        amount_y = 5
+        border_color = (0,0,0)
+
+        # create X and Y ramps
+        x = np.arange(w, dtype=np.float32)
+        y = np.arange(h, dtype=np.float32)
+        
+        # compute phase to increment over 360 degree for number of frames specified so makes full cycle
+        phase_x = n*360/num_frames
+        phase_y = phase_x
+
+        # create sinusoids in X and Y, add to ramps and tile out to fill to size of image
+        x_sin = amount_x * np.sin(2 * np.pi * (x/wave_x + phase_x/360)) + x
+        map_x = np.tile(x_sin, (h,1))
+
+        y_sin = amount_y * np.sin(2 * np.pi * (y/wave_y + phase_y/360)) + y
+        map_y = np.tile(y_sin, (w,1)).transpose()
+
+        # do the warping using remap and return
+        return cv2.remap(frame.copy(), map_x, map_y, cv2.INTER_CUBIC, borderMode = cv2.BORDER_CONSTANT, borderValue=border_color)
+            
+
+    def run(self, i, bpm):
 
         i_last = -1
         day_segment_last = None
@@ -139,6 +172,7 @@ class Video:
 
             n = 0
             skip_frames = 1
+            num_frames = randint(50,100)
 
             while cap.isOpened():
 
@@ -146,13 +180,6 @@ class Video:
                 ret = cap.grab()
 
                 if ret == True:
-
-                    # If step is on and it's been more than three seconds since we last broke, break and start over
-                    if step_on_flag.value:
-                        if (time() - step_time_last) > 3:
-                            step_time_last = time()
-                            break
-
                     n = n + 1
                     if n % skip_frames == 0:
                         
@@ -165,8 +192,10 @@ class Video:
                         # print('adjusted fps: ' + str(adjusted_fps))
                         # print('actual fps: ' + str(actual_fps))
                         # print('skip frames: ' + str(skip_frames))
-
-                        sleep((1/adjusted_fps) - ((time() - start_time) % (1/adjusted_fps)))
+                        try:
+                            sleep((1/adjusted_fps) - ((time() - start_time) % (1/adjusted_fps)))
+                        except:
+                            sleep((1/adjusted_fps))
 
                         if i.value != i_last: # timestep has changed
                             # print("i = ", i.value)
@@ -202,10 +231,10 @@ class Video:
 
                             row = self.df.iloc[i.value]
 
-                            if row['Timestamp'].hour < 10:
-                                padding = 25
-                            else:
+                            if row['Timestamp'].hour in (10,11,12,22,23):
                                 padding = 0
+                            else:
+                                padding = 35
 
                             time_text=row['Timestamp'].strftime("%-I:%M")
                             am_pm_text =row['Timestamp'].strftime("%p").lower()
@@ -226,12 +255,18 @@ class Video:
                         #Adjust brightness
                         frame = self.change_brightness(frame, value=-brightness_reduction)
 
+                        # Warp image
+                        frame = self.warp_image(frame, n, num_frames)
+                        
+                        # Switch blues and reds
+                        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
                         # Add in time
                         ft.putText(img=frame,
                             text=time_text,
-                            org=(225+padding, 250),
-                            fontHeight=150,
-                            color=(255,  255, 255),
+                            org=(20+padding, 720),
+                            fontHeight=75,
+                            color=(255, 255, 255),
                             thickness=-1,
                             line_type=cv2.LINE_AA,
                             bottomLeftOrigin=True)
@@ -239,23 +274,22 @@ class Video:
                         # Add in am/pm
                         ft.putText(img=frame,
                             text=am_pm_text,
-                            org=(325, 375),
-                            fontHeight=100,
-                            color=(255,  255, 255),
+                            org=(230, 720),
+                            fontHeight=75,
+                            color=(255, 255, 255),
                             thickness=-1,
                             line_type=cv2.LINE_AA,
                             bottomLeftOrigin=True)
                         
                         # Add in bottom text
-                        ft.putText(img=frame,
-                            text=bottom_text,
-                            org=(50, 550),
-                            fontHeight=50,
-                            color=(255,  255, 255),
-                            thickness=-1,
-                            line_type=cv2.LINE_AA,
-                            bottomLeftOrigin=True)
-                            
+                        # ft.putText(img=frame,
+                        #     text=bottom_text,
+                        #     org=(50, 550),
+                        #     fontHeight=50,
+                        #     color=(255,  255, 255),
+                        #     thickness=-1,
+                        #     line_type=cv2.LINE_AA,
+                        #     bottomLeftOrigin=True)
 
                         cv2.imshow(self.window_name, frame)
                         cv2.namedWindow(self.window_name, cv2.WINDOW_FULLSCREEN)

@@ -19,14 +19,37 @@ class Devices:
 
         return {'x':x, 'y':y}
             
-    def update_bulbs(self, property, value):
-        for bulb_name in self.bulb_names:
-            get_plugin('zigbee.mqtt').device_set(device=bulb_name, property=property, value=value)
+    def update_bulbs_brightness(self, value, sensor_flags):
+
+        # Always update 5 and 6
+        for s in (5,6):
+            bulb_name = 'Bulb ' + str(s)
+
+            get_plugin('zigbee.mqtt').device_set(device=bulb_name, property='brightness', value=value)
+
+        # Update bulbs 1-4
+        for s in range(4):
+            bulb_name = 'Bulb ' + str(s+1)
+
+            # If we have sensors and those sensors are off, set brightnes to 0
+            if sensor_flags is not None:
+                if not sensor_flags[s].value:
+                    value = 0
+            
+            get_plugin('zigbee.mqtt').device_set(device=bulb_name, property='brightness', value=value)
+
+
+    def update_bulbs_color(self, value):
+
+        # Update bulbs 1-6
+        for s in range(6):
+            bulb_name = 'Bulb ' + str(s+1)
+            get_plugin('zigbee.mqtt').device_set(device=bulb_name, property='color', value=value)
 
     def toggle_plug(self, value):
         get_plugin('zigbee.mqtt').device_set(device=self.plug_name, property='state', value=value)
         
-    def run(self, i):
+    def run(self, i, sensor_flags):
         i_last = -1
         last_color = -1
         last_brightness = -1
@@ -42,10 +65,10 @@ class Devices:
 
                 if color != last_color:
                     # print('setting color to ' + str(color))
-                    self.update_bulbs('color', color)
+                    self.update_bulbs_color(color)
                 if brightness != last_brightness:
                     # print('setting brightness to ' + str(brightness))
-                    self.update_bulbs('brightness', brightness)
+                    self.update_bulbs_brightness(brightness, sensor_flags)
                 if plug_state != last_plug_state:
                     print('setting plug state to ' + plug_state)
                     self.toggle_plug(plug_state)
