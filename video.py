@@ -195,7 +195,7 @@ class Video:
                         try:
                             sleep((1/adjusted_fps) - ((time() - start_time) % (1/adjusted_fps)))
                         except:
-                            sleep((1/adjusted_fps))
+                            continue
 
                         if i.value != i_last: # timestep has changed
                             # print("i = ", i.value)

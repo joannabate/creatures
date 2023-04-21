@@ -24,7 +24,8 @@ class Sensors:
         print('sensor ' + str(sensor_id) + ' is ' + str(response['contact']))
 
         # Set sensor flag to response (true/false)
-        sensor_flags[sensor_id-1].value = response['contact']
+        if sensor_flags is not None:
+            sensor_flags[sensor_id-1].value = response['contact']
 
     def on_publish(self, mosq, obj, mid):
         # print("Publish: " + str(mid))

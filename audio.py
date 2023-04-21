@@ -99,10 +99,10 @@ class Audio:
 
         # If there are no sensors - set the other four to go to individual speakers
         # If there are sensors - set to other four off
-        for n in range(4):
-            sample_bank = self.sample_order[n+2]
+        for sensor_id in range(4):
+            sample_bank = self.sample_order[sensor_id+2]
             if sensor_flags is None:
-                self.set_solo_speaker(MUSIC_CHANNEL, sample_bank, n)
+                self.set_solo_speaker(MUSIC_CHANNEL, sample_bank, sensor_id, sensor_flags)
             else:
                 self.set_all_off(MUSIC_CHANNEL, sample_bank)
 
@@ -116,13 +116,11 @@ class Audio:
         sample_bank = 40
         self.set_all_speakers(AMBIENT_CHANNEL, sample_bank)
 
-        # If there are no sensors - set the other four to go to individual speakers
-        # If there are sensors - set other four to off
-        for sample_bank in range(0, 31, 10):
-            if sensor_flags is None:
-                self.set_solo_speaker(AMBIENT_CHANNEL, sample_bank)
-            else:
-                self.set_all_off(AMBIENT_CHANNEL, sample_bank)
+        # Set the other four to go to individual speakers
+        for sensor_id in range(4):
+            sample_bank = sensor_id * 10
+            self.set_solo_speaker(AMBIENT_CHANNEL, sample_bank, sensor_id, sensor_flags)
+
 
     def set_all_speakers(self, channel, sample_bank):
         if channel == AMBIENT_CHANNEL:
@@ -136,37 +134,57 @@ class Audio:
         else:
             raise Exception("Channel not recognized")
 
-        print(channel_name + ' Bank ' + str(sample_bank) + ' to 63 volume, two sends')
+        print(channel_name + ' Bank ' + str(sample_bank) + ' to all speakers')
         self.controller.set_control(channel, control=sample_bank, value=63)
         self.controller.set_control(channel, control=sample_bank+1, value=63)
         for send in range(2):
             self.controller.set_control(channel, control=sample_bank+2+send, value=a_b_vol)
             self.controller.set_control(channel, control=sample_bank+4+send, value=c_d_vol)
 
-    def set_solo_speaker(self, channel, sample_bank, id):
-
-        # Set to full volume
-        print('Music Bank ' + str(sample_bank) + ' to 95 volume, one send')
-        self.controller.set_control(channel, control=sample_bank, value=95)
+    def set_solo_speaker(self, channel, sample_bank, id, sensor_flags):
 
         # Panning and send is determined by which speaker we want to hit
-        # Speaker 1 (ID 0) = send C, hard left
-        # Speaker 2 (ID 1) = send C, hard right
-        # Speaker 3 (ID 2) = send D, hard left
-        # Speaker 4 (ID 3) = send D, hard right
+        # Speaker 1 (ID 0) = send A or C, hard left
+        # Speaker 2 (ID 1) = send A or C, hard right
+        # Speaker 3 (ID 2) = send B or D, hard left
+        # Speaker 4 (ID 3) = send B or D, hard right
 
+        # Pan is the same for both ambient and music
         if id in (0, 2):
             pan_value = 0
         else:
             pan_value = 127
 
-        if id in (0, 1):
-            send_cc = 2 # Send C
-        else:
-            send_cc = 3 # Send D
-
         # Set pan
         self.controller.set_control(channel=channel, control=sample_bank+1, value=pan_value)
+
+        # Set to off if ambient and we have sensors, on otherwise
+        if channel == AMBIENT_CHANNEL:
+            print('Ambient Bank ' + str(sample_bank) + ' to solo speaker')
+
+            if sensor_flags is None:
+                self.controller.set_control(channel, control=sample_bank, value=95)
+            else:
+                self.controller.set_control(channel, control=sample_bank, value=0)
+
+            # Set send to A or B
+            if id in (0, 1):
+                send_cc = 0 # Send A
+            else:
+                send_cc = 1 # Send B
+
+        # Set to on if music
+        elif channel == MUSIC_CHANNEL:
+            print('Music Bank ' + str(sample_bank) + ' to solo speaker')
+            self.controller.set_control(channel, control=sample_bank, value=95)
+
+            # Set send to C or D
+            if id in (0, 1):
+                send_cc = 2 # Send C
+            else:
+                send_cc = 3 # Send D
+        else:
+            raise Exception("Channel not recognized")
 
         for send in range(4):
             # Set the send we want to on, set the rest to off
@@ -176,7 +194,7 @@ class Audio:
                 self.controller.set_control(channel=channel, control=sample_bank+2+send, value=0)
 
     def set_all_off(self, channel, sample_bank):
-        print('Channel ' + str(channel) + ' Bank ' + str(sample_bank) + ' to 0 volume, no sends')
+        print('Channel ' + str(channel) + ' Bank ' + str(sample_bank) + ' off')
         self.controller.set_control(channel=channel, control=sample_bank, value=0)
         self.controller.set_control(channel=channel, control=sample_bank+1, value=63)
         for send in range(4):
@@ -210,30 +228,34 @@ class Audio:
                 ambient_vol = int(row['Direct Beam'] * 95)
 
                 if sensor_flags is not None:
+                    # print('sensor_flags: ' + str([s.value for s in sensor_flags]))
+                    # print('sensor_flags_last: ' + str(sensor_flags_last))
                     # For every sensor, 
                     for sensor_id in range(4):
                         # If the value has changed
-                        if sensor_flags[sensor_id].value !=sensor_flags_last[sensor_id]:
+                        # print('sensor_flags[' + str(sensor_id) + '].value: ' + str(sensor_flags[sensor_id].value))
+                        # print('sensor_flags_last[' + str(sensor_id) + ']: ' + str(sensor_flags_last[sensor_id]))
+                        if sensor_flags[sensor_id].value != sensor_flags_last[sensor_id]:
                             # If it's on
                             if sensor_flags[sensor_id].value:
                                 print('Processing sensor ' + str(sensor_id) + ' (on)')
                                 # If it's not already assigned to a sample
-                                if sensor_id not in sensor_bank_assignments:
+                                if sensor_bank_assignments[sensor_id] == -1:
 
                                     # Find next sample not under control
                                     for sample_bank_id in range(4):
-                                        if sensor_bank_assignments[sample_bank_id] == -1:
+                                        if self.sample_order[sample_bank_id+2] not in sensor_bank_assignments:
+                                            # Assign sensor to that bank
+                                            sample_bank = self.sample_order[sample_bank_id+2]
                                             break
 
-                                    # Assign sensor to that bank
-                                    sample_bank = self.sample_order[sample_bank_id+2]
                                     print('Assigning sensor ' + str(sensor_id) + ' to music bank ' + str(sample_bank))
                                     sensor_bank_assignments[sensor_id] = sample_bank
 
-                                    print('Sensor music bank assignments: ' + str(sensor_bank_assignments))
+                                    print('New sensor music bank assignments (after): ' + str(sensor_bank_assignments))
 
                                     # Set volume, pan and send
-                                    self.set_solo_speaker(MUSIC_CHANNEL, sample_bank, sensor_id)
+                                    self.set_solo_speaker(MUSIC_CHANNEL, sample_bank, sensor_id, sensor_flags)
 
                                 else:
 
@@ -253,9 +275,7 @@ class Audio:
                             # If sensor is off
                             else:
                                 print('Processing sensor ' + str(sensor_id) + ' (off)')
-                                # If it's already assigned to a sample bank:
-                                print('Sensor bank assignments: ' + str(sensor_bank_assignments))
-                                # If it's already assigned to a bank
+                                # If it's already assigned to a sample bank
                                 if sensor_bank_assignments[sensor_id] != -1:
                                     # Find bank it controls
                                     sample_bank = sensor_bank_assignments[sensor_id]
@@ -270,14 +290,14 @@ class Audio:
                                 sample_bank = sensor_id * 10
                                 print('Ambient Bank ' + str(sample_bank) + ' off')
                                 self.controller.set_control(AMBIENT_CHANNEL, control=sample_bank, value=0)
-                        
-                        # Update last sensor flags
-                        sensor_flags_last = [s.value for s in sensor_flags]
+                            
+                            # Update last sensor flags
+                            sensor_flags_last[sensor_id] = sensor_flags[sensor_id].value
 
                 if ambient != ambient_last:
                     for sample_bank in range(0, 50, 10):
                         self.controller.play_note(AMBIENT_CHANNEL, note=sample_bank+ambient)
-                        ambient_last = ambient
+                    ambient_last = ambient
 
                 if ambient_vol != ambient_vol_last:
                     for cc in range(2):
@@ -293,8 +313,6 @@ class Audio:
 
                 # Get current sample status
                 df_samples_now = self.df_samples[self.df_samples.index <= day_idx].tail(1)
-                # print('df_samples_now ' + str(df_samples_now))
-                # print('sample_order ' + str(self.sample_order))
 
                 # Activate new samples
                 for sample_bank, sample in df_samples_now.items():
