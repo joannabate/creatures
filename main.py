@@ -6,10 +6,13 @@ from data import load_data, get_start_index
 from audio import Audio
 from video import Video
 from sensors import Sensors
+from statistics import median
 
 class Listener:
     def __init__(self):
         self.inport = mido.open_input()
+
+        self.bpm_list = [100, 100, 100, 100, 100]
 
     def run(self, i, bpm):
 
@@ -22,10 +25,14 @@ class Listener:
         for msg in self.inport:
             if msg.type == 'clock':
                     if ticks % 6 == 0:
-                        i.value = i.value + 1
+                        # Loop round at end of day
+                        i.value = (i.value + 1) % 525600
 
                         i_time = time()
-                        bpm.value = int(4*4/(i_time - i_time_last))
+                        raw_bpm = int(4*4/(i_time - i_time_last))
+                        self.bpm_list.insert(0, raw_bpm)
+                        self.bpm_list.pop()
+                        bpm.value = median(self.bpm_list)
                         i_time_last = i_time
 
                     ticks = ticks + 1

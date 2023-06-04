@@ -24,3 +24,12 @@ Platypush UI at http://127.0.0.1:8008/
 
 Red = 0.7539, 0.2746
 Green = 0.0771, 0.8268
+
+Needs looping:
+circles
+dust
+star
+spirit
+woods
+fire
+air

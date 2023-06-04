@@ -149,6 +149,7 @@ class Video:
         start_time = time()
         step_time_last = time()
         video = None
+        brightness_reduction = 1
 
         ft = cv2.freetype.createFreeType2()
         ft.loadFontData(fontFileName='Fondamento-Regular.ttf', id=0)
@@ -239,6 +240,13 @@ class Video:
                             time_text=row['Timestamp'].strftime("%-I:%M")
                             am_pm_text =row['Timestamp'].strftime("%p").lower()
 
+                            if bpm.value > 110:
+                                speed_text = 'Fast'
+                            elif bpm.value < 90:
+                                speed_text = 'Slow'
+                            else:
+                                speed_text = None
+
                             # If it's night
                             if day_segment == 'night':
                                 # Inverse of below
@@ -281,15 +289,16 @@ class Video:
                             line_type=cv2.LINE_AA,
                             bottomLeftOrigin=True)
                         
-                        # Add in bottom text
-                        # ft.putText(img=frame,
-                        #     text=bottom_text,
-                        #     org=(50, 550),
-                        #     fontHeight=50,
-                        #     color=(255,  255, 255),
-                        #     thickness=-1,
-                        #     line_type=cv2.LINE_AA,
-                        #     bottomLeftOrigin=True)
+                        # Add in speed text
+                        if speed_text:
+                            ft.putText(img=frame,
+                                text=speed_text,
+                                org=(1100, 720),
+                                fontHeight=75,
+                                color=(255, 255, 255),
+                                thickness=-1,
+                                line_type=cv2.LINE_AA,
+                                bottomLeftOrigin=True)
 
                         cv2.imshow(self.window_name, frame)
                         cv2.namedWindow(self.window_name, cv2.WINDOW_FULLSCREEN)

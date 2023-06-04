@@ -4,7 +4,7 @@ from platypush.context import get_plugin
 class Devices:
     def __init__(self, df):
         self.df = df
-        self.bulb_names = ['Bulb ' + str(n+1) for n in range(6)]
+        self.bulb_names = ['Bulb ' + str(n+1) for n in range(10)]
         self.plug_name = 'Plug'
 
     def convert_to_color(self, num):
@@ -21,9 +21,9 @@ class Devices:
             
     def update_bulbs_brightness(self, value, sensor_flags):
 
-        # Always update 5 and 6
-        for s in (5,6):
-            bulb_name = 'Bulb ' + str(s)
+        # Always update 5 thru 10
+        for s in (range(6)):
+            bulb_name = 'Bulb ' + str(s+5)
 
             # print('Setting ' + bulb_name + ' brightness to ' + str(value))
             get_plugin('zigbee.mqtt').device_set(device=bulb_name, property='brightness', value=value)
@@ -48,8 +48,8 @@ class Devices:
 
     def update_bulbs_color(self, value):
 
-        # Update bulbs 1-6
-        for s in range(6):
+        # Update bulbs 1-10
+        for s in range(10):
             bulb_name = 'Bulb ' + str(s+1)
             # print('Setting ' + bulb_name + ' color to ' + str(value))
             get_plugin('zigbee.mqtt').device_set(device=bulb_name, property='color', value=value)
@@ -77,15 +77,19 @@ class Devices:
                 if sensor_flags is not None:
                     sensor_flags_last = [-1, -1, -1, -1]
 
-                if color != last_color:
-                    # print('setting color to ' + str(color))
-                    self.update_bulbs_color(color)
-                if (brightness != last_brightness):
-                    # print('setting brightness to ' + str(brightness))
-                    self.update_bulbs_brightness(brightness, sensor_flags)
-                if plug_state != last_plug_state:
-                    print('setting plug state to ' + plug_state)
-                    self.toggle_plug(plug_state)
+                try:
+                    if color != last_color:
+                        # print('setting color to ' + str(color))
+                        self.update_bulbs_color(color)
+                    if (brightness != last_brightness):
+                        # print('setting brightness to ' + str(brightness))
+                        self.update_bulbs_brightness(brightness, sensor_flags)
+                    if plug_state != last_plug_state:
+                        print('setting plug state to ' + plug_state)
+                        self.toggle_plug(plug_state)
+                except:
+                    print("WARNING: Devices failed to update")
+                    continue
 
                 # If we have sensors
                 if sensor_flags is not None:
@@ -95,14 +99,17 @@ class Devices:
                         if sensor_flags[sensor_id].value != sensor_flags_last[sensor_id]:
                             bulb_name = 'Bulb ' + str(sensor_id+1)
                             # If the sensor is off
-                            if not sensor_flags[sensor_id].value:
-                                # Switch bulb off
-                                # print('Setting ' + bulb_name + ' brightness to 0')
-                                get_plugin('zigbee.mqtt').device_set(device=bulb_name, property='brightness', value=0)
-                            else:
-                                # Switch bulb on
-                                get_plugin('zigbee.mqtt').device_set(device=bulb_name, property='brightness', value=brightness)
-
+                            try:
+                                if not sensor_flags[sensor_id].value:
+                                    # Switch bulb off
+                                    # print('Setting ' + bulb_name + ' brightness to 0')
+                                    get_plugin('zigbee.mqtt').device_set(device=bulb_name, property='brightness', value=0)
+                                else:
+                                    # Switch bulb on
+                                    get_plugin('zigbee.mqtt').device_set(device=bulb_name, property='brightness', value=brightness)
+                            except:
+                                print("WARNING: Devices failed to update")
+                                continue
                         # Update last sensor flags
                         sensor_flags_last[sensor_id] = sensor_flags[sensor_id].value
 
