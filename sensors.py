@@ -11,7 +11,9 @@ class Sensors:
         self.sensor_names = [('zigbee2mqtt/Sensor 1', 0),
                              ('zigbee2mqtt/Sensor 2', 0),
                              ('zigbee2mqtt/Sensor 3', 0),
-                             ('zigbee2mqtt/Sensor 4', 0)]
+                             ('zigbee2mqtt/Sensor 4', 0),
+                             ('zigbee2mqtt/Sensor 5', 0),
+                             ('zigbee2mqtt/Sensor 6', 0)]
 
     def on_connect(self, mosq, obj, flag, rc):
         print("rc: " + str(rc))
@@ -76,7 +78,10 @@ if __name__ == "__main__":
     s2 = mp.Value('b', False)
     s3 = mp.Value('b', False)
     s4 = mp.Value('b', False)
-    sensor_flags = [s1, s2, s3, s4]
+    s5 = mp.Value('b', False)
+    s6 = mp.Value('b', False)
+
+    sensor_flags = [s1, s2, s3, s4, s5, s6]
 
     my_sensors = Sensors()
     my_sensors.run(sensor_flags)

@@ -1,11 +1,11 @@
 from platypush.context import get_plugin
 
+N_BULBS = 6
+N_PLUGS = 0
 
 class Devices:
     def __init__(self, df):
         self.df = df
-        self.bulb_names = ['Bulb ' + str(n+1) for n in range(10)]
-        self.plug_name = 'Plug'
 
     def convert_to_color(self, num):
         red = 0.7539, 0.2746
@@ -20,16 +20,15 @@ class Devices:
         return {'x':x, 'y':y}
             
     def update_bulbs_brightness(self, value, sensor_flags):
-
-        # Always update 5 thru 10
-        for s in (range(6)):
-            bulb_name = 'Bulb ' + str(s+5)
+        # Always update 7 thru 10
+        for s in (range(N_BULBS-6)):
+            bulb_name = 'Bulb ' + str(s+7)
 
             # print('Setting ' + bulb_name + ' brightness to ' + str(value))
             get_plugin('zigbee.mqtt').device_set(device=bulb_name, property='brightness', value=value)
 
-        # Update bulbs 1-4
-        for s in range(4):
+        # Update bulbs 1-6
+        for s in range(6):
             bulb_name = 'Bulb ' + str(s+1)
 
             # If we have sensors and those sensors are on, set brightness
@@ -47,15 +46,16 @@ class Devices:
 
 
     def update_bulbs_color(self, value):
-
         # Update bulbs 1-10
-        for s in range(10):
+        for s in range(N_BULBS):
             bulb_name = 'Bulb ' + str(s+1)
             # print('Setting ' + bulb_name + ' color to ' + str(value))
             get_plugin('zigbee.mqtt').device_set(device=bulb_name, property='color', value=value)
 
-    def toggle_plug(self, value):
-        get_plugin('zigbee.mqtt').device_set(device=self.plug_name, property='state', value=value)
+    def toggle_plugs(self, value):
+        for s in range(N_PLUGS):
+            plug_name = 'Plug ' + str(s+1)
+            get_plugin('zigbee.mqtt').device_set(device=plug_name, property='state', value=value)
         
     def run(self, i, sensor_flags):
         i_last = -1
@@ -64,7 +64,7 @@ class Devices:
         last_plug_state = 'Unknown'
 
         if sensor_flags is not None:
-            sensor_flags_last = [-1, -1, -1, -1]
+            sensor_flags_last = [-1, -1, -1, -1, -1, -1]
 
         while True:
             if i.value != i_last: # timestep has changed
@@ -75,7 +75,7 @@ class Devices:
                 plug_state = 'ON' if row['Direct Beam'] < 0.25 else 'OFF'
 
                 if sensor_flags is not None:
-                    sensor_flags_last = [-1, -1, -1, -1]
+                    sensor_flags_last = [-1, -1, -1, -1, -1, -1]
 
                 try:
                     if color != last_color:
@@ -86,7 +86,7 @@ class Devices:
                         self.update_bulbs_brightness(brightness, sensor_flags)
                     if plug_state != last_plug_state:
                         print('setting plug state to ' + plug_state)
-                        self.toggle_plug(plug_state)
+                        self.toggle_plugs(plug_state)
                 except:
                     print("WARNING: Devices failed to update")
                     continue
@@ -94,7 +94,7 @@ class Devices:
                 # If we have sensors
                 if sensor_flags is not None:
                     # For every sensor, 
-                    for sensor_id in range(4):
+                    for sensor_id in range(6):
                         # If the value has changed
                         if sensor_flags[sensor_id].value != sensor_flags_last[sensor_id]:
                             bulb_name = 'Bulb ' + str(sensor_id+1)
@@ -112,7 +112,6 @@ class Devices:
                                 continue
                         # Update last sensor flags
                         sensor_flags_last[sensor_id] = sensor_flags[sensor_id].value
-
 
                 i_last = i.value
                 last_color = color

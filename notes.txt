@@ -1,20 +1,12 @@
-First timestamp: 1640167200
-+1 year: 1671703200
-Delta: 31536000
-
-One day = 86400
-
-Today's time: (current time) % 86400
-
-Point in data = 1640167200 + 31536000 * (today's time)/86400
-
 /dev/tty.usbserial-1410
+
+/dev/tty.usbserial-14210
 
 To start:
 
 brew services restart mosquitto 
 brew services restart redis
-cd Desktop/zigbee2mqtt
+cd Desktop/zigbee2mqtt (if necessary)
 conda deactivate
 source bin/activate 
 npm start

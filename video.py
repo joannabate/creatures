@@ -7,10 +7,11 @@ from time import sleep, time
 from random import randint, choice
 import os
 from skimage.transform import swirl
-
+from wrapper import RedisWrapper
 
 class Video:
-    def __init__(self, df, width=1360, height=768, window_name='clock'):
+    # def __init__(self, df, width=1360, height=768, window_name='clock'):
+    def __init__(self, df, use_redis=False, width=800, height=600, window_name='clock'):
         self.df = df
         self.width = width
         self.height = height
@@ -18,8 +19,12 @@ class Video:
         self.window_name = window_name
         self.font_color = (0,0,255)
         self.max_fps = 40
+        self.use_redis = use_redis
 
         self.videos = self.get_videos()
+
+        if use_redis:
+            self.r = RedisWrapper()
 
         # Assume default sunset and sunrise times
         self.sunrise = 360
@@ -74,13 +79,14 @@ class Video:
 
         for season in self.season_end_dates:
             if current_date < season['date']:
-                bottom_text = "%d days until %s" % ((season['date'] - current_date).days, season['date_name'])
+                # bottom_text = "%d days until %s" % ((season['date'] - current_date).days, season['date_name'])
                 break
             elif current_date == season['date']:
-                bottom_text = season['date_name'].upper()
+                # bottom_text = season['date_name'].upper()
                 break
 
-        return season['season'], bottom_text
+        # return season['season'], bottom_text
+        return season['season']
 
     def get_day_segment(self, i):
             
@@ -144,7 +150,8 @@ class Video:
         i_last = -1
         day_segment_last = None
         day_segment = self.get_day_segment(i.value)
-        season, bottom_text = self.get_season(i.value)
+        # season, bottom_text = self.get_season(i.value)
+        season = self.get_season(i.value)
         frame_time_last = time()
         start_time = time()
         step_time_last = time()
@@ -210,12 +217,19 @@ class Video:
                             day_idx = i.value % 1440
 
                             # Set season and bottom text
-                            season, bottom_text = self.get_season(i.value)
+                            # season, bottom_text = self.get_season(i.value)
+
+                            if self.get_season(i.value) != season:
+                                season = self.get_season(i.value)
 
                             # If day segment has changed, break and start over
                             if self.get_day_segment(i.value) != day_segment:
                                 day_segment_last = day_segment
                                 day_segment = self.get_day_segment(i.value)
+
+                                if self.use_redis:
+                                    self.r.set('time_day_segment', day_segment)
+                                    self.r.set('time_season', season)
 
                                 print('Day segment has changed from ' + day_segment_last + ' to ' + day_segment)
                                 # Update sunrise and sunset times
@@ -224,6 +238,9 @@ class Video:
                                 elif day_segment == 'night' and day_segment_last == 'sunset':
                                     self.sunset = day_idx
                                 break
+
+                            # self.r.set('time_bottom_text', bottom_text)
+                            # self.r.set('time_day_idx', day_idx) 
 
                             # If music has changed break and start over
                             if day_idx in self.music_changes:
@@ -272,8 +289,10 @@ class Video:
                         # Add in time
                         ft.putText(img=frame,
                             text=time_text,
-                            org=(20+padding, 720),
-                            fontHeight=75,
+                            # org=(20+padding, 720),
+                            org=(100+padding, 300),
+                            # fontHeight=75,
+                            fontHeight=150,
                             color=(255, 255, 255),
                             thickness=-1,
                             line_type=cv2.LINE_AA,
@@ -282,8 +301,10 @@ class Video:
                         # Add in am/pm
                         ft.putText(img=frame,
                             text=am_pm_text,
-                            org=(230, 720),
-                            fontHeight=75,
+                            # org=(230, 720),
+                            org=(500, 300),
+                            # fontHeight=75,
+                            fontHeight=150,
                             color=(255, 255, 255),
                             thickness=-1,
                             line_type=cv2.LINE_AA,
@@ -293,8 +314,9 @@ class Video:
                         if speed_text:
                             ft.putText(img=frame,
                                 text=speed_text,
-                                org=(1100, 720),
-                                fontHeight=75,
+                                #org=(1100, 720),
+                                org=(50, 50),
+                                fontHeight=25,
                                 color=(255, 255, 255),
                                 thickness=-1,
                                 line_type=cv2.LINE_AA,

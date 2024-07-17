@@ -50,7 +50,7 @@ def audio_loop(i, df, sensor_flags):
     my_audio.run(i, sensor_flags)
 
 def video_loop(i, bpm, df):
-    my_video = Video(df)
+    my_video = Video(df, use_redis=True)
     my_video.run(i, bpm)
 
 def sensors_loop(sensor_flags):
@@ -65,28 +65,31 @@ if __name__ == "__main__":
 
     i = mp.Value('i', get_start_index(df))
     bpm = mp.Value('i', 0)
+    
     s1 = mp.Value('b', False)
     s2 = mp.Value('b', False)
     s3 = mp.Value('b', False)
     s4 = mp.Value('b', False)
+    s5 = mp.Value('b', False)
+    s6 = mp.Value('b', False)
 
-    sensor_flags = [s1, s2, s3, s4]
+    sensor_flags = [s1, s2, s3, s4, s5, s6]
     # sensor_flags = None
     
     p1 = mp.Process(target=listener, args=(i, bpm))
     p2 = mp.Process(target=devices_loop, args=(i, df, sensor_flags))
     p3 = mp.Process(target=audio_loop, args=(i, df, sensor_flags))
-    p4 = mp.Process(target=video_loop, args=(i, bpm, df))
+    # p4 = mp.Process(target=video_loop, args=(i, bpm, df))
     p5 = mp.Process(target=sensors_loop, args=(sensor_flags,))
 
     p1.start()
     p2.start()
     p3.start()
-    p4.start()
+    # p4.start()
     p5.start()
 
     p1.join()
     p2.join()
     p3.join()
-    p4.join()
+    # p4.join()
     p5.join()

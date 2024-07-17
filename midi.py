@@ -26,24 +26,25 @@ class MidiController:
 
 if __name__ == "__main__":
     my_controller = MidiController()
-    my_controller.test_control(channel=1, control=115)
-    # my_controller.set_control(channel=1, control=10, value=1)
-    # my_controller.play_note(channel=0, note=48)
+    my_controller.test_control(channel=2, control=5)
+    # my_controller.play_note(channel=0, note=68)
 
 ### CHANNEL 0 - AMBIENT ###
-# notes 0 thru 50 = ambient samples
-# controls 0 thru 50 - ambient samples volumes, pans, sends
+# notes 0 thru 70 = ambient samples
+# controls 0 thru 70 - ambient samples volumes, pans, sends
 
 ### CHANNEL 1 - MUSIC ###
-# notes 0 thru 40 = drum samples
-# notes 40 through 120 = melody samples
-# controls 0 thru 50 - drum samples volumes, pans, sends
-# controls 40 thru 120 - melody samples volumes, pans, sends
+# notes 0 thru 20 = drum samples
+# notes 20 through 80 = melody samples
+# controls 0 thru 20 - drum samples volumes, pans, sends
+# controls 20 thru 80 - melody samples volumes, pans, sends
 
 ### CHANNEL 2 - MASTER CONTROLS
 # control 0 = ambient 1 volume
 # control 1 = ambient 2 volume
-# control 2 = music 1 volume
-# control 3 = music 2 volume
+# control 2 = ambient 3 volume
+# control 3 = music 1 volume
+# control 4 = music 2 volume
+# control 5 = music 3 volume
 # note 100 = start
 # note 101 = stop
