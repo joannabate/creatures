@@ -1,4 +1,4 @@
-Code for "Elsewhen" project at TTITF
+Code for "Elsewhen" project at TTITW
 
 Setup follows https://hackernoon.com/how-to-transform-a-raspberrypi-into-a-universal-zigbee-and-z-wave-bridge-xy1ay3ymz
 
