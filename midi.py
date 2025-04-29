@@ -3,7 +3,7 @@ import time
 
 class MidiController:
     def __init__(self):
-        self.outport = mido.open_output('IAC Driver creatures')
+        self.outport = mido.open_output('IAC Driver python')
 
     def play_note(self, channel=0, note=60, velocity=64):
         msg = mido.Message('note_on', channel=channel, note=note, velocity=velocity)
@@ -26,8 +26,8 @@ class MidiController:
 
 if __name__ == "__main__":
     my_controller = MidiController()
-    my_controller.test_control(channel=2, control=5)
-    # my_controller.play_note(channel=0, note=68)
+    # my_controller.set_control(channel=2, control=30)
+    my_controller.play_note(channel=2, note=101)
 
 ### CHANNEL 0 - AMBIENT ###
 # notes 0 thru 70 = ambient samples

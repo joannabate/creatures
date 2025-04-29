@@ -4,68 +4,59 @@ import multiprocessing as mp
 from devices import Devices
 from data import load_data, get_start_index
 from audio import Audio
-from video import Video
+# from video import Video
 from sensors import Sensors
-from statistics import median
+import asyncio
+import multiprocessing as mp
 
-class Listener:
-    def __init__(self):
+class Clock:
+    def __init__(self, start_index):
         self.inport = mido.open_input()
+        self.i = start_index
 
-        self.bpm_list = [100, 100, 100, 100, 100]
-
-    def run(self, i, bpm):
-
+    async def run(self, queue):
         ticks = 0
-
         print('Ready for midi...')
 
-        i_time_last = time()
+        message = {"source": "clock",
+                    "payload": self.i}
+        await queue.put(message)
+        # print(f"Clock: {message}")
+        await asyncio.sleep(0.001)
 
         for msg in self.inport:
             if msg.type == 'clock':
                     if ticks % 6 == 0:
                         # Loop round at end of day
-                        i.value = (i.value + 1) % 525600
-
-                        i_time = time()
-                        raw_bpm = int(4*4/(i_time - i_time_last))
-                        self.bpm_list.insert(0, raw_bpm)
-                        self.bpm_list.pop()
-                        bpm.value = median(self.bpm_list)
-                        i_time_last = i_time
-
+                        self.i = (self.i + 1) % 525600
+                        message = {"source": "clock",
+                                   "payload": self.i}
+                        await queue.put(message)
+                        # print(f"Clock: {message}")
+                        await asyncio.sleep(0.001)
                     ticks = ticks + 1
 
-def listener(i, bpm):
-    my_listener = Listener()
-    my_listener.run(i, bpm)
 
-def devices_loop(i, df, sensor_flags):
+async def clock_loop(queue, start_index):
+    my_clock = Clock(start_index)
+    await my_clock.run(queue)
+
+async def devices_loop(queue, df, sensor_flags):
     my_devices = Devices(df)
-    my_devices.run(i, sensor_flags)
+    await my_devices.run(queue, sensor_flags)
 
-def audio_loop(i, df, sensor_flags):
+async def audio_loop(queue, df, sensor_flags):
     my_audio = Audio(df)
-    my_audio.run(i, sensor_flags)
+    await my_audio.run(queue, sensor_flags)
 
-def video_loop(i, bpm, df):
-    my_video = Video(df, use_redis=True)
-    my_video.run(i, bpm)
-
-def sensors_loop(sensor_flags):
+async def sensors_loop(queue, sensor_flags):
     my_sensors = Sensors()
-    my_sensors.run(sensor_flags)
+    await my_sensors.run(queue, sensor_flags)
 
-if __name__ == "__main__":
-    
-    mp.set_start_method('forkserver')
-
+async def main():
     df = load_data(cached=True)
+    start_index = get_start_index(df)
 
-    i = mp.Value('i', get_start_index(df))
-    bpm = mp.Value('i', 0)
-    
     s1 = mp.Value('b', False)
     s2 = mp.Value('b', False)
     s3 = mp.Value('b', False)
@@ -75,21 +66,14 @@ if __name__ == "__main__":
 
     sensor_flags = [s1, s2, s3, s4, s5, s6]
     # sensor_flags = None
-    
-    p1 = mp.Process(target=listener, args=(i, bpm))
-    p2 = mp.Process(target=devices_loop, args=(i, df, sensor_flags))
-    p3 = mp.Process(target=audio_loop, args=(i, df, sensor_flags))
-    # p4 = mp.Process(target=video_loop, args=(i, bpm, df))
-    p5 = mp.Process(target=sensors_loop, args=(sensor_flags,))
 
-    p1.start()
-    p2.start()
-    p3.start()
-    # p4.start()
-    p5.start()
+    queue = asyncio.Queue()
+    clock_task = asyncio.create_task(clock_loop(queue, start_index))
+    devices_task = asyncio.create_task(devices_loop(queue, df, sensor_flags))
+    sensors_task = asyncio.create_task(sensors_loop(queue, sensor_flags))
+    audio_task = asyncio.create_task(audio_loop(queue, df, sensor_flags))
 
-    p1.join()
-    p2.join()
-    p3.join()
-    # p4.join()
-    p5.join()
+    await asyncio.gather(clock_task, devices_task, sensors_task, audio_task)
+
+if __name__ == "__main__":
+    asyncio.run(main())

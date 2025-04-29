@@ -17,7 +17,7 @@ class Audio:
 
     def generate_samples(self, sensor_flags):
         # Create array to hold data
-        sample_values = np.array([[np.NaN] * 8] * 8)
+        sample_values = np.array([[np.nan] * 8] * 8)
 
         # Populate drum loops
         for n in range(0,2):
@@ -32,8 +32,8 @@ class Audio:
             sample_values[n][n] = key
 
         # Split out the ambient samples
-        ambient_sample_values = sample_values[-1:]
-        sample_values = sample_values[:-1]
+        ambient_sample_values = sample_values[-2:]
+        sample_values = sample_values[:-2]
 
         # Shuffle rows
         np.random.shuffle(sample_values)
@@ -64,8 +64,8 @@ class Audio:
         # If there are sensors the samples are always ready to be played, if activated by a sensor
         # Otherwise a "song" is built with the samples triggering in a specific order
         # We hack this by setting all values to the last row (fully built song)
-        if sensor_flags:
-            df_samples.iloc[:,:] = df_samples.iloc[5,].values
+        if sensor_flags is not None:
+            df_samples.iloc[:,:] = df_samples.iloc[7,].values
 
         # Create another dataframe to hold the fills. These occur 16 beats before each change.
         df_fills = df_samples.copy()
@@ -102,7 +102,7 @@ class Audio:
         return df_samples
     
     def set_initial_music_settings(self):
-        # Set first two ordered music samples to all speakers
+        # Set first two music samples to all speakers
         for sensor_id in range(2):
             sample_bank = self.sample_order[sensor_id]
             self.set_all_speakers(MUSIC_CHANNEL, sample_bank)
@@ -112,10 +112,10 @@ class Audio:
             sample_bank = self.sample_order[sensor_id+2]
             self.set_solo_speaker(MUSIC_CHANNEL, sample_bank, sensor_id)
 
-        # Set all other channels to off
-        for sample_bank in range(0, 71, 10):
-            if sample_bank not in self.sample_order:
-                self.set_all_off(MUSIC_CHANNEL, sample_bank)
+        # # Set all other channels to off
+        # for sample_bank in range(0, 71, 10):
+        #     if sample_bank not in self.sample_order:
+        #         self.set_all_off(MUSIC_CHANNEL, sample_bank)
 
     def set_initial_ambient_settings(self):
         # Set seventh ambient sample to all speakers
@@ -206,15 +206,15 @@ class Audio:
         for send in range(6):
             self.controller.set_control(channel=channel, control=sample_bank+2+send, value=0)
 
-    def run(self, i, sensor_flags):
+    async def run(self, queue, sensor_flags):
+
+        # start playback
+        print("starting playback")
+        self.controller.play_note(RETURN_CHANNEL, note=100)
 
         # Populate samples
         self.df_samples = self.generate_samples(sensor_flags)
 
-        # start playback
-        self.controller.play_note(RETURN_CHANNEL, note=100)
-
-        i_last = -1
         ambient_vol_last = -1
         ambient_last = -1
         ambient = choice(range(0,5))
@@ -231,15 +231,17 @@ class Audio:
         self.set_initial_ambient_settings()
 
         while True:
-            if i.value != i_last: # timestep has changed
-                row = self.df.iloc[i.value]
+            item = await queue.get()
+            # print(f"Consumed: {item}")
+            if item["source"] == "clock":
+                row = self.df.iloc[item["payload"]]
 
                 ambient_vol = int(row['Direct Beam'] * 95)
 
                 if sensor_flags is not None:
                     # print('sensor_flags: ' + str([s.value for s in sensor_flags]))
                     # print('sensor_flags_last: ' + str(sensor_flags_last))
-                    # For every sensor, 
+                    # For every sensor
                     for sensor_id in range(6):
                         # If the value has changed
                         # print('sensor_flags[' + str(sensor_id) + '].value: ' + str(sensor_flags[sensor_id].value))
@@ -277,7 +279,7 @@ class Audio:
                     # print("setting music volume to " + str(127-ambient_vol))
 
                 # Get index for hour of day
-                day_idx = i.value % 1440
+                day_idx = item["payload"]
 
                 # Get current sample status
                 df_samples_now = self.df_samples[self.df_samples.index <= day_idx].tail(1)
@@ -306,8 +308,6 @@ class Audio:
                 if day_idx == (24*60 - 4 - 4):
                     ambient = choice([i for i in range(0,5) if i != ambient])
 
-
-                i_last = i.value
                 ambient_vol_last = ambient_vol
                 df_samples_last = df_samples_now.copy()
 
@@ -321,6 +321,8 @@ if __name__ == "__main__":
     s6 = mp.Value('b', False)
 
     sensor_flags = [s1, s2, s3, s4, s5, s6]
+
+    # sensor_flags = None
 
     audio = Audio(None)
     audio.generate_samples(sensor_flags)
